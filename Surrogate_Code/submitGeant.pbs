@@ -1,0 +1,30 @@
+#!/bin/bash
+# Template file for submitting Geant run to cluster
+
+# Set job name
+#PBS -N RSM_Opt
+# Set output options (output and error files)
+#PBS -j oe
+# Shell
+#PBS -S /bin/bash
+# Number of nodes and processors
+#PBS -l nodes=1:ppn=4
+# Max walltime
+#PBS -l walltime=10000:00:00
+# Set queue
+#PBS -q unlimited
+# Job is rerunable
+#PBS -r n
+# Export Users Environmental Variables to Execution Host
+#PBS -V
+
+# Change to work directory
+cd $PBS_O_WORKDIR
+# Set Open MPI settings
+export OMP_PROC_BIND=true
+export OMP_PLACES=threads
+export OMP_NUM_THREADS=4
+# Run file
+filename -t 4
+# Print completion date
+date

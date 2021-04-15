@@ -1,0 +1,73 @@
+#!/bin/bash
+# Created by Darren Holland
+# Modified by Darren Holland 2020-11-02
+#**********************************************************************
+# File for running MAS design evaluation and passing the output back  
+# to Dakota.
+#**********************************************************************
+# $1 is foldername.para FROM Dakota
+# $2 is foldername.res returned to Dakota
+
+# --------------
+# PRE-PROCESSING
+# --------------
+# Get the project name and design number from the filename
+temp=$1
+temp2="$(pwd)"
+projname="${temp%.*}"
+extension="${temp2#*.}"
+
+# --------
+# ANALYSIS
+# --------
+# Pass project, design number, and result filename into design evaluation
+cp ../../SurrEval.sh ../../MASEval.sh
+sed -i -e  "s?.MOGApara?.MASpara?g" "../../MASEval.sh"				
+sed -i -e  "s?Method=\"MOGA\"?Method=\"MAS\"?g" "../../MASEval.sh"				
+../../MASEval.sh $projname $extension $2
+
+# ---------------
+# POST-PROCESSING
+# ---------------
+# Change the design number into a five digit value
+if [[ $extension -lt 10 ]] 
+then
+	fullext=""0000$extension""
+fi
+if [[ $extension -lt 100 ]] && [[ $extension -ge 10 ]]
+then
+	fullext=""000$extension""
+fi
+if [[ $extension -lt 1000 ]] && [[ $extension -ge 100 ]]
+then
+	fullext=""00$extension""
+fi
+if [[ $extension -lt 10000 ]] && [[ $extension -ge 1000 ]]
+then
+	fullext=""0$extension""
+fi
+if [[ $extension -ge 10000 ]] 
+then
+	fullext=""$extension""
+fi
+
+# ONLY PULL OUT OBJECTIVE FUNCTIONS NEEDED FOR CURRENT ANALYSIS
+# Extract objective value from the simulation output
+# Use total time (Ttotal) as objective function
+cp $2 DesignResults.o
+Bad_Geo=$(grep 'Bad_Geo ' "$2" | cut -c 8-)
+
+# Put objective values in file to pass back to Dakota
+if [[ $Bad_Geo -lt 1 ]]
+then 
+    # Valid design
+	Ttotal=$(grep 'Ttotal ' "$2" | cut -c 8-)
+    Obj=$Ttotal
+    echo $Obj >> results.tmp
+else
+    # Invalid design, set to inf
+	echo 'inf' >> results.tmp
+fi
+
+# Rename temporary file as return file
+mv results.tmp $2
