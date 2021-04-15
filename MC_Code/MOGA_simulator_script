@@ -1,0 +1,89 @@
+#!/bin/bash
+# Created by Darren Holland
+# Modified by Darren Holland 2020-11-02
+#**********************************************************************
+# File for running MOGA design evaluation and passing the output back  
+# to Dakota.
+#**********************************************************************
+# $1 is foldername.para FROM Dakota
+# $2 is foldername.res returned to Dakota
+
+# --------------
+# PRE-PROCESSING
+# --------------
+# Get the project name and design number from the filename
+temp=$1
+temp2="$(pwd)"
+projname="${temp%.*}"
+extension="${temp2#*.}"
+
+# --------
+# ANALYSIS
+# --------
+# Pass project, design number, and result filename into design evaluation
+../../GeantEval$projname.sh $projname $extension $2
+
+# ---------------
+# POST-PROCESSING
+# ---------------
+# Change the design number into a five digit value
+if [[ $extension -lt 10 ]] 
+then
+	fullext=""0000$extension""
+fi
+if [[ $extension -lt 100 ]] && [[ $extension -ge 10 ]]
+then
+	fullext=""000$extension""
+fi
+if [[ $extension -lt 1000 ]] && [[ $extension -ge 100 ]]
+then
+	fullext=""00$extension""
+fi
+if [[ $extension -lt 10000 ]] && [[ $extension -ge 1000 ]]
+then
+	fullext=""0$extension""
+fi
+if [[ $extension -ge 10000 ]] 
+then
+	fullext=""$extension""
+fi
+
+# ONLY PULL OUT OBJECTIVE FUNCTIONS NEEDED FOR CURRENT ANALYSIS
+# Extract objective value from the simulation output
+# Use Time (Tmin), Accuracy (Amin), Mass (Mass), and MAC (avgSingleMAC) as objective functions
+cp $2 DesignResults.o
+Bad_Geo=$(grep 'Bad_Geo ' "$2" | cut -c 8-)
+
+# Put objective values in file to pass back to Dakota
+if [[ $Bad_Geo -lt 1 ]]
+then 
+    # Valid design
+	grep 'avgSingleMAC ' "$2" | cut -c 14- >> results.tmp
+	grep 'Ttotal ' "$2" | cut -c 8- >> results.tmp
+	grep 'Amin ' "$2" | cut -c 6- >> results.tmp
+	# Get mass from Geant output
+    M=$(grep 'Mass' "./bld/"$projname"MOGA"$fullext"mass.txt" | cut -c 5- | rev | cut -c 3- | rev)
+	unit=$(grep 'Mass' "./bld/"$projname"MOGA"$fullext"mass.txt" | rev | cut -c -2 | rev)
+	# Express mass in g
+	if [[ $unit == 'kg' ]]
+	then
+		Mass=$(awk -v dd="$M" 'BEGIN {printf "%.3f\n",dd*1000}');
+	else
+		if [[ $unit == 'g ' ]]
+		then
+			Mass=$M 
+		else   # Unlikely unit (but theoretically possible for other designs) is mg
+			Mass=$(awk -v dd="$M" 'BEGIN {printf "%.4f\n",dd/1000}');
+		fi
+	fi
+	echo $Mass >> results.tmp
+else
+	# Invalid design, set to inf
+	echo 'inf' >> results.tmp
+	echo 'inf' >> results.tmp
+	echo 'inf' >> results.tmp
+	echo 'inf' >> results.tmp
+fi
+
+# Rename temporary file as return file
+mv results.tmp $2

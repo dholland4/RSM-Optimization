@@ -1,0 +1,66 @@
+# $Id: CMakeLists.txt 86065 2014-11-07 08:51:15Z gcosmo $
+# Modified by Darren Holland 2020-11-02
+# This file compiles the Geant code for a design
+
+#----------------------------------------------------------------------------
+# Setup the project
+#
+cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
+project(Optimize CXX)
+
+#----------------------------------------------------------------------------
+# Find Geant4 package, activating all available UI and Vis drivers by default
+# You can set WITH_GEANT4_UIVIS to OFF via the command line or ccmake/cmake-gui
+# to build a batch mode only executable
+#
+option(WITH_GEANT4_UIVIS "Build example with Geant4 UI and Vis drivers" ON)
+if(WITH_GEANT4_UIVIS)
+  find_package(Geant4 REQUIRED ui_all vis_all)
+else()
+  find_package(Geant4 REQUIRED)
+endif()
+
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+find_package(G4mpi REQUIRED)
+
+find_package(Boost 1.64.0 EXACT REQUIRED COMPONENTS filesystem )
+
+#----------------------------------------------------------------------------
+# Setup Geant4 include directories and compile definitions
+# Setup include directory for this project
+#
+include_directories(${FILE_DIR}/include ${G4mpi_INCLUDE_DIR} ${Boost_INCLUDE_DIR})
+include(${Geant4_USE_FILE})
+
+#----------------------------------------------------------------------------
+# Locate sources and headers for this project
+# NB: headers are included so they will show up in IDEs
+#
+file(GLOB sources ${FILE_DIR}/src/*.cc)
+file(GLOB headers ${FILE_DIR}/include/*.hh)
+
+#----------------------------------------------------------------------------
+# Add the executable, and link it to the Geant4 libraries
+#
+add_executable(${ExeName2} ${ExeName}.cc ${Settings}.cc ${sources} ${headers})
+target_link_libraries(${ExeName2} ${Geant4_LIBRARIES} ${G4mpi_LIBRARIES} ${Boost_FILESYSTEM_LIBRARY})
+
+#----------------------------------------------------------------------------
+# Copy all scripts to the build directory, i.e. the directory in which we
+# build it. This is so that we can run the executable directly because it
+# relies on these scripts being in the current working directory.
+#
+set(MYMESH_SCRIPTS)
+
+foreach(_script ${MYMESH_SCRIPTS})
+  configure_file(
+    ${FILE_DIR}/${_script}
+    ${PROJECT_BINARY_DIR}/${_script}
+    COPYONLY
+    )
+endforeach()
+
+#----------------------------------------------------------------------------
+# Install the executable to 'bin' directory under CMAKE_INSTALL_PREFIX
+#
+install(TARGETS ${ExeName2} DESTINATION bin)
