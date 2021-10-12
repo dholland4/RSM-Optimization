@@ -4,7 +4,7 @@
 #**********************************************************************
 # This code starts the Dakota optimization.  The desired parameters and 
 # settings are passed into Dakota (written to MOGAMAStemplate.in), which 
-# calls the Geant wrapper (GeantWrapper.sh).  The wrapper creates the
+# calls the Geant wrapper (SurrWrapper.sh).  The wrapper creates the
 # geometry (CreateMat.py and CreateGeo.inp), compiles the Geant evaluation
 # code, runs Geant, and calls the analysis script (Analyze.py). The analysis
 # code evaluates the objective functions based on the Geant-produced 
